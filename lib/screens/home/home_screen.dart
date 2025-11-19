@@ -203,39 +203,44 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Quick actions grid - 4 columns
+  // Quick actions grid - 4 columns horizontally arranged
   Widget _buildQuickActions() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.count(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        crossAxisCount: 4,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.8,
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          _buildQuickActionItem(
-            icon: Icons.arrow_upward,
-            label: 'Enviar',
-            onTap: () => context.go(AppRoutes.sendMoney),
+          Expanded(
+            child: _buildQuickActionItem(
+              icon: Icons.arrow_upward,
+              label: 'Enviar',
+              onTap: () => context.go(AppRoutes.sendMoney),
+            ),
           ),
-          _buildQuickActionItem(
-            icon: Icons.arrow_downward,
-            label: 'Recibir',
-            onTap: () => context.go(AppRoutes.sendMoney),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildQuickActionItem(
+              icon: Icons.arrow_downward,
+              label: 'Recibir',
+              onTap: () => context.go(AppRoutes.sendMoney),
+            ),
           ),
-          _buildQuickActionItem(
-            icon: Icons.add,
-            label: 'Añadir',
-            onTap: () => context.go(AppRoutes.addCard),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildQuickActionItem(
+              icon: Icons.add,
+              label: 'Añadir',
+              onTap: () => context.go(AppRoutes.addCard),
+            ),
           ),
-          _buildQuickActionItem(
-            icon: Icons.qr_code_scanner,
-            label: 'Escanear',
-            onTap: () {
-              // TODO: Implement QR scanning
-            },
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildQuickActionItem(
+              icon: Icons.qr_code_scanner,
+              label: 'Escanear',
+              onTap: () {
+                // TODO: Implement QR scanning
+              },
+            ),
           ),
         ],
       ),
