@@ -407,7 +407,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Reset Password'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -428,7 +428,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text('Cancel'),
           ),
           Consumer<AuthProvider>(
@@ -436,13 +436,22 @@ class _LoginScreenState extends State<LoginScreen> {
               return ElevatedButton(
                 onPressed: authProvider.isLoading ? null : () async {
                   if (emailController.text.isNotEmpty) {
+                    // Store the contexts before async operation
+                    final mainContext = context;
+                    final dialogContextLocal = dialogContext;
+
+                    // Show loading indicator
                     final success = await authProvider.resetPassword(emailController.text);
+
                     if (success) {
+                      // Close dialog first
                       if (mounted) {
-                        Navigator.of(context).pop();
+                        Navigator.of(dialogContextLocal).pop();
                       }
+
+                      // Show snackbar immediately after dialog closes
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        ScaffoldMessenger.of(mainContext).showSnackBar(
                           const SnackBar(
                             content: Text('Password reset email sent!'),
                             backgroundColor: Colors.green,

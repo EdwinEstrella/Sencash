@@ -45,56 +45,49 @@ class AppRouter {
         builder: (context, state) => const RegisterScreen(),
       ),
 
-      // Main App Routes (with nested navigation)
-      ShellRoute(
-        builder: (context, state, child) {
-          return MainNavigationScreen(child: child);
+      // Main App Routes (without ShellRoute - each screen has its own navigation)
+      GoRoute(
+        path: AppRoutes.home,
+        name: 'home',
+        builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.sendMoney,
+        name: 'send-money',
+        builder: (context, state) => const SendMoneyScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.massSend,
+        name: 'mass-send',
+        builder: (context, state) => const MassSendScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.transactions,
+        name: 'transactions',
+        builder: (context, state) => const TransactionsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.transactionDetail,
+        name: 'transaction-detail',
+        builder: (context, state) {
+          final transactionId = state.pathParameters['transactionId']!;
+          return TransactionDetailScreen(transactionId: transactionId);
         },
-        routes: [
-          GoRoute(
-            path: AppRoutes.home,
-            name: 'home',
-            builder: (context, state) => const HomeScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.sendMoney,
-            name: 'send-money',
-            builder: (context, state) => const SendMoneyScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.massSend,
-            name: 'mass-send',
-            builder: (context, state) => const MassSendScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.transactions,
-            name: 'transactions',
-            builder: (context, state) => const TransactionsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.transactionDetail,
-            name: 'transaction-detail',
-            builder: (context, state) {
-              final transactionId = state.pathParameters['transactionId']!;
-              return TransactionDetailScreen(transactionId: transactionId);
-            },
-          ),
-          GoRoute(
-            path: AppRoutes.cards,
-            name: 'cards',
-            builder: (context, state) => const CardsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.addCard,
-            name: 'add-card',
-            builder: (context, state) => const AddCardScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.profile,
-            name: 'profile',
-            builder: (context, state) => const ProfileScreen(),
-          ),
-        ],
+      ),
+      GoRoute(
+        path: AppRoutes.cards,
+        name: 'cards',
+        builder: (context, state) => const CardsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.addCard,
+        name: 'add-card',
+        builder: (context, state) => const AddCardScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.profile,
+        name: 'profile',
+        builder: (context, state) => const ProfileScreen(),
       ),
     ],
     errorBuilder: (context, state) => ErrorScreen(error: state.error),
@@ -104,100 +97,6 @@ class AppRouter {
       return null;
     },
   );
-}
-
-// Main Navigation Screen with Bottom Navigation Bar
-class MainNavigationScreen extends StatefulWidget {
-  final Widget child;
-  const MainNavigationScreen({super.key, required this.child});
-
-  @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
-}
-
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
-
-  final List<NavigationItem> _navigationItems = [
-    const NavigationItem(
-      icon: Icons.home_outlined,
-      selectedIcon: Icons.home,
-      label: 'Home',
-      route: AppRoutes.home,
-    ),
-    const NavigationItem(
-      icon: Icons.send_outlined,
-      selectedIcon: Icons.send,
-      label: 'Send',
-      route: AppRoutes.sendMoney,
-    ),
-    const NavigationItem(
-      icon: Icons.history_outlined,
-      selectedIcon: Icons.history,
-      label: 'History',
-      route: AppRoutes.transactions,
-    ),
-    const NavigationItem(
-      icon: Icons.credit_card_outlined,
-      selectedIcon: Icons.credit_card,
-      label: 'Cards',
-      route: AppRoutes.cards,
-    ),
-    const NavigationItem(
-      icon: Icons.person_outline,
-      selectedIcon: Icons.person,
-      label: 'Profile',
-      route: AppRoutes.profile,
-    ),
-  ];
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Use a simple approach for now - this will be updated when needed
-  }
-
-  void _onItemTapped(int index) {
-    if (_currentIndex != index) {
-      setState(() {
-        _currentIndex = index;
-      });
-      context.go(_navigationItems[index].route);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: widget.child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        items: _navigationItems.map((item) {
-          return BottomNavigationBarItem(
-            icon: Icon(item.icon),
-            activeIcon: Icon(item.selectedIcon),
-            label: item.label,
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class NavigationItem {
-  final IconData icon;
-  final IconData selectedIcon;
-  final String label;
-  final String route;
-
-  const NavigationItem({
-    required this.icon,
-    required this.selectedIcon,
-    required this.label,
-    required this.route,
-  });
 }
 
 // Error Screen

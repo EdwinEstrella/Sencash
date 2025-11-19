@@ -26,6 +26,13 @@ class TransactionProvider extends ChangeNotifier {
   DateTime? get startDate => _startDate;
   DateTime? get endDate => _endDate;
 
+  // Get recent transactions (sorted by date, newest first)
+  List<Transaction> get recentTransactions {
+    final sortedTransactions = List<Transaction>.from(_transactions)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return sortedTransactions;
+  }
+
   // Statistics getters
   double get totalSent => _transactions
       .where((t) => t.isCompleted && t.isSent)
@@ -207,11 +214,6 @@ class TransactionProvider extends ChangeNotifier {
     } catch (e) {
       return null;
     }
-  }
-
-  // Get recent transactions (last 5)
-  List<Transaction> get recentTransactions {
-    return _transactions.take(5).toList();
   }
 
   // Get transactions by type

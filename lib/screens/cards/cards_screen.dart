@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/card_provider.dart';
+import '../../providers/transaction_provider.dart';
 import '../../models/card.dart' as card_model;
+import '../../models/transaction.dart';
 import '../../config/routes.dart';
 
 class CardsScreen extends StatefulWidget {
@@ -17,31 +19,25 @@ class _CardsScreenState extends State<CardsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadCards();
+    _loadData();
   }
 
-  void _loadCards() async {
+  void _loadData() async {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.user != null) {
-      await context.read<CardProvider>().loadCards(authProvider.user!.id);
+      await Future.wait([
+        context.read<CardProvider>().loadCards(authProvider.user!.id),
+        context.read<TransactionProvider>().loadTransactions(authProvider.user!.id),
+      ]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Cards'),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add, color: Colors.white),
-            onPressed: () => context.go(AppRoutes.addCard),
-          ),
-        ],
-      ),
-      body: Consumer<CardProvider>(
-        builder: (context, cardProvider, child) {
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: Consumer2<CardProvider, TransactionProvider>(
+        builder: (context, cardProvider, transactionProvider, child) {
           if (cardProvider.isLoading) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -49,6 +45,7 @@ class _CardsScreenState extends State<CardsScreen> {
           }
 
           final cards = cardProvider.sortedCards;
+          final recentTransactions = transactionProvider.recentTransactions.take(5).toList();
 
           if (cards.isEmpty) {
             return Center(
@@ -86,13 +83,37 @@ class _CardsScreenState extends State<CardsScreen> {
           }
 
           return RefreshIndicator(
-            onRefresh: _refreshCards,
-            child: ListView.builder(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              itemCount: cards.length,
-              itemBuilder: (context, index) {
-                return _buildCardItem(cards[index]);
-              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main Card
+                  _buildMainCard(cards.first),
+                  const SizedBox(height: 24),
+
+                  // Action Buttons
+                  _buildActionButtons(cards.first),
+                  const SizedBox(height: 32),
+
+                  // Recent Activity
+                  _buildRecentActivity(recentTransactions),
+                  const SizedBox(height: 32),
+
+                  // Other Cards
+                  if (cards.length > 1) ...[
+                    Text(
+                      'Other Cards',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                    const SizedBox(height: 16),
+                    ...cards.skip(1).map((card) => _buildSecondaryCard(card)),
+                  ],
+                ],
+              ),
             ),
           );
         },
@@ -100,214 +121,464 @@ class _CardsScreenState extends State<CardsScreen> {
     );
   }
 
-  Widget _buildCardItem(card_model.Card card) {
+  // Main Card Design - Black with Green Accents
+  Widget _buildMainCard(card_model.Card card) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
+      height: 240,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Stack(
         children: [
-          // Card Design
+          // Black background card
           Container(
-            height: 200,
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _getCardColor(card.brand),
-                  _getCardColor(card.brand).withValues(alpha: 0.8),
+                  Colors.black87,
+                  Colors.black,
                 ],
               ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: _getCardColor(card.brand).withValues(alpha: 0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Stack(
-              children: [
-                // Card Pattern
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(100),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: const BorderRadius.only(
-                        topRight: Radius.circular(80),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Card Content
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            card.brand.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (card.isDefault)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'DEFAULT',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Text(
-                        '•••• •••• •••• ${card.lastFourDigits}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          letterSpacing: 2,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Card Holder',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                card.cardholderName.toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Expires',
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 12,
-                                ),
-                              ),
-                              Text(
-                                '${card.expiryMonth}/${card.expiryYear.substring(2)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+              borderRadius: BorderRadius.circular(20),
             ),
           ),
 
-          // Card Actions
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: const BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
+          // Green accent blur effect (similar to web design)
+          Positioned(
+            top: -50,
+            right: -50,
+            child: Container(
+              width: 200,
+              height: 200,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C853).withValues(alpha: 0.15),
+                shape: BoxShape.circle,
               ),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+
+          // Card content
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Top section with bank logo and wireless icon
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    if (!card.isDefault)
-                      TextButton(
-                        onPressed: () => _setDefaultCard(card),
-                        child: const Text('Set Default'),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    if (card.isActive)
-                      TextButton(
-                        onPressed: () => _blockCard(card),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.orange,
-                        ),
-                        child: const Text('Block'),
-                      )
-                    else
-                      TextButton(
-                        onPressed: () => _unblockCard(card),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.green,
-                        ),
-                        child: const Text('Unblock'),
+                      child: Icon(
+                        Icons.account_balance,
+                        color: const Color(0xFF00C853),
+                        size: 24,
                       ),
+                    ),
+                    Icon(
+                      Icons.wifi_outlined,
+                      color: Colors.white70,
+                      size: 24,
+                    ),
                   ],
                 ),
-                TextButton(
-                  onPressed: () => _deleteCard(card),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
+                const SizedBox(height: 32),
+
+                // Card number
+                Text(
+                  '••••  ••••  ••••  ${card.lastFourDigits}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    letterSpacing: 3,
+                    fontWeight: FontWeight.w500,
                   ),
-                  child: const Text('Delete'),
+                ),
+                const SizedBox(height: 32),
+
+                // Bottom section with cardholder and expiry
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CARD HOLDER',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          card.cardholderName.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'EXPIRES',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.6),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${card.expiryMonth.toString().padLeft(2, '0')}/${card.expiryYear.substring(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // Action buttons grid
+  Widget _buildActionButtons(card_model.Card card) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Quick Actions',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 1.5,
+            children: [
+              _buildActionButton(
+                icon: Icons.lock_outline,
+                label: 'Bloquear',
+                onTap: () => card.isActive ? _blockCard(card) : _unblockCard(card),
+                color: card.isActive ? Colors.orange : Colors.green,
+              ),
+              _buildActionButton(
+                icon: Icons.add_circle_outline,
+                label: 'Añadir',
+                onTap: () => context.go(AppRoutes.addCard),
+                color: const Color(0xFF00C853),
+              ),
+              _buildActionButton(
+                icon: Icons.visibility_outlined,
+                label: 'Ver NIP',
+                onTap: () => _showPinDialog(card),
+                color: Colors.blue,
+              ),
+              _buildActionButton(
+                icon: Icons.settings_outlined,
+                label: 'Límites',
+                onTap: () => _showLimitsDialog(card),
+                color: Colors.purple,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: color.withValues(alpha: 0.2),
+            width: 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+          color: color.withValues(alpha: 0.05),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Recent activity section
+  Widget _buildRecentActivity(List<Transaction> transactions) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Recent Activity',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          if (transactions.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.history,
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    'No recent transactions',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...transactions.map((transaction) => _buildActivityItem(transaction)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityItem(Transaction transaction) {
+    final isSent = transaction.type == TransactionType.send;
+    final categoryIcon = _getCategoryIcon(transaction.recipientEmail);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: categoryIcon['color'],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(
+              categoryIcon['icon'],
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.recipientName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  _formatTransactionDate(transaction.createdAt),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${isSent ? '-' : '+'}\$${transaction.amount.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: isSent ? Colors.red : const Color(0xFF00C853),
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getCategoryIcon(String email) {
+    if (email.contains('restaurant') || email.contains('food')) {
+      return {'icon': Icons.restaurant, 'color': Colors.orange};
+    } else if (email.contains('shop') || email.contains('store')) {
+      return {'icon': Icons.shopping_bag, 'color': Colors.blue};
+    } else if (email.contains('uber') || email.contains('taxi')) {
+      return {'icon': Icons.local_taxi, 'color': Colors.yellow};
+    } else if (email.contains('amazon')) {
+      return {'icon': Icons.local_shipping, 'color': Colors.orange};
+    } else {
+      return {'icon': Icons.account_balance_wallet, 'color': const Color(0xFF00C853)};
+    }
+  }
+
+  String _formatTransactionDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  // Secondary card for additional cards
+  Widget _buildSecondaryCard(card_model.Card card) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: _getCardColor(card.brand),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.credit_card,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '•••• •••• •••• ${card.lastFourDigits}',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  '${card.cardholderName} • ${card.brand.toUpperCase()}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (card.isDefault)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'Default',
+                style: TextStyle(
+                  color: const Color(0xFF00C853),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -329,17 +600,13 @@ class _CardsScreenState extends State<CardsScreen> {
     }
   }
 
-  Future<void> _refreshCards() async {
+  Future<void> _refreshData() async {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.user != null) {
-      await context.read<CardProvider>().refreshCards(authProvider.user!.id);
-    }
-  }
-
-  void _setDefaultCard(card_model.Card card) async {
-    final authProvider = context.read<AuthProvider>();
-    if (authProvider.user != null) {
-      await context.read<CardProvider>().setDefaultCard(authProvider.user!.id, card.id);
+      await Future.wait([
+        context.read<CardProvider>().refreshCards(authProvider.user!.id),
+        context.read<TransactionProvider>().loadTransactions(authProvider.user!.id),
+      ]);
     }
   }
 
@@ -365,15 +632,84 @@ class _CardsScreenState extends State<CardsScreen> {
     }
   }
 
-  void _deleteCard(card_model.Card card) async {
-    final confirmed = await _showConfirmationDialog(
-      'Delete Card',
-      'Are you sure you want to delete this card? This action cannot be undone.',
+  void _showPinDialog(card_model.Card card) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Card PIN'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.lock, size: 48, color: Color(0xFF00C853)),
+            const SizedBox(height: 16),
+            Text(
+              'Your PIN is ****',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'For security reasons, please check your banking app for the actual PIN.',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
     );
+  }
 
-    if (confirmed && mounted) {
-      await context.read<CardProvider>().deleteCard(card.id);
-    }
+  void _showLimitsDialog(card_model.Card card) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Card Limits'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildLimitRow('Daily spending', '\$5,000.00'),
+            _buildLimitRow('Monthly spending', '\$20,000.00'),
+            _buildLimitRow('Single transaction', '\$2,500.00'),
+            _buildLimitRow('ATM withdrawal', '\$1,000.00'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLimitRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(fontSize: 16),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF00C853),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool> _showConfirmationDialog(String title, String message) async {

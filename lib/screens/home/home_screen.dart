@@ -26,268 +26,260 @@ class _HomeScreenState extends State<HomeScreen> {
   void _loadData() async {
     final authProvider = context.read<AuthProvider>();
     if (authProvider.user != null) {
-      if (mounted) {
-        await context.read<TransactionProvider>().loadTransactions(authProvider.user!.id);
-      }
-      if (mounted) {
-        await context.read<CardProvider>().loadCards(authProvider.user!.id);
-      }
+      await Future.wait([
+        context.read<TransactionProvider>().loadTransactions(authProvider.user!.id),
+        context.read<CardProvider>().loadCards(authProvider.user!.id),
+      ]);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // App Bar
-            SliverAppBar(
-              floating: true,
-              backgroundColor: Theme.of(context).colorScheme.primary,
-              expandedHeight: 200,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Consumer<AuthProvider>(
-                  builder: (context, authProvider, child) {
-                    return Text(
-                      'Welcome, ${authProvider.user?.firstName ?? 'User'}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    );
-                  },
+      backgroundColor: Colors.white,
+      body: Consumer<AuthProvider>(
+        builder: (context, authProvider, child) {
+          return Column(
+            children: [
+              // Main content area
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Header with user info and notifications
+                      _buildHeader(authProvider),
+
+                      // Balance card
+                      _buildBalanceCard(authProvider),
+
+                      // Quick actions grid
+                      _buildQuickActions(),
+
+                      // Recent activity section
+                      _buildRecentActivity(),
+                    ],
+                  ),
                 ),
-                background: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Theme.of(context).colorScheme.primary,
-                        Theme.of(context).colorScheme.primaryContainer,
-                      ],
+              ),
+            ],
+          );
+        },
+      ),
+      // Bottom navigation bar
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  // Header with user info and notifications
+  Widget _buildHeader(AuthProvider authProvider) {
+    final user = authProvider.user;
+    final userName = user?.fullName ?? 'Usuario';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // User info section
+          Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF00C853).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    _getInitials(userName),
+                    style: const TextStyle(
+                      color: Color(0xFF00C853),
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
               ),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                  onPressed: () {
-                    // TODO: Implement notifications
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                  onPressed: () async {
-                    await context.read<AuthProvider>().logout();
-                    if (mounted) {
-                      context.go(AppRoutes.login);
-                    }
-                  },
-                ),
-              ],
-            ),
-
-            // Content
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Balance Card
-                    _buildBalanceCard(),
-                    const SizedBox(height: 24),
-
-                    // Quick Actions
-                    _buildQuickActions(),
-                    const SizedBox(height: 24),
-
-                    // Recent Transactions
-                    _buildRecentTransactions(),
-                  ],
+              const SizedBox(width: 12),
+              Text(
+                'Hola, ${_getFirstName(userName)}',
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+            ],
+          ),
+
+          // Notifications button
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: IconButton(
+              onPressed: () {
+                // TODO: Implement notifications
+              },
+              icon: const Icon(
+                Icons.notifications_outlined,
+                color: Colors.black,
+                size: 24,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                shape: const CircleBorder(),
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildBalanceCard() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final balance = authProvider.user?.balance ?? 0.0;
+  // Balance card - black design like the web
+  Widget _buildBalanceCard(AuthProvider authProvider) {
+    final balance = authProvider.user?.balance ?? 0.0;
 
-        return Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Theme.of(context).colorScheme.primary,
-                Theme.of(context).colorScheme.primaryContainer,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 0),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header with balance label and visibility toggle
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Total Balance',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      _showBalance ? Icons.visibility : Icons.visibility_off,
-                      color: Colors.white,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showBalance = !_showBalance;
-                      });
-                    },
-                  ),
-                ],
+              const Text(
+                'Saldo Disponible',
+                style: TextStyle(
+                  color: Color(0xFFCBD5E1),
+                  fontSize: 14,
+                  fontWeight: FontWeight.normal,
+                ),
               ),
-              const SizedBox(height: 8),
-              Text(
-                _showBalance ? '\$${balance.toStringAsFixed(2)}' : '••••••',
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-              ),
-              const SizedBox(height: 16),
-              Consumer<CardProvider>(
-                builder: (context, cardProvider, child) {
-                  final defaultCard = cardProvider.defaultCard;
-                  if (defaultCard != null) {
-                    return Row(
-                      children: [
-                        Icon(
-                          Icons.credit_card,
-                          color: Colors.white.withValues(alpha: 0.8),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '${defaultCard.brand} •••• ${defaultCard.lastFourDigits}',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                        ),
-                      ],
-                    );
-                  }
-                  return const SizedBox.shrink();
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _showBalance = !_showBalance;
+                  });
                 },
+                icon: Icon(
+                  _showBalance ? Icons.visibility : Icons.visibility_off,
+                  color: const Color(0xFFCBD5E1),
+                  size: 20,
+                ),
+                style: IconButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 4),
+
+          // Balance amount
+          Text(
+            _showBalance ? '\$${balance.toStringAsFixed(2)}' : '••••••',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -1,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
+  // Quick actions grid - 4 columns
   Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.2,
-          children: [
-            _buildActionCard(
-              icon: Icons.send,
-              title: 'Send Money',
-              color: Colors.green,
-              onTap: () => context.go(AppRoutes.sendMoney),
-            ),
-            _buildActionCard(
-              icon: Icons.people,
-              title: 'Mass Send',
-              color: Colors.blue,
-              onTap: () => context.go(AppRoutes.massSend),
-            ),
-            _buildActionCard(
-              icon: Icons.credit_card,
-              title: 'My Cards',
-              color: Colors.purple,
-              onTap: () => context.go(AppRoutes.cards),
-            ),
-            _buildActionCard(
-              icon: Icons.history,
-              title: 'History',
-              color: Colors.orange,
-              onTap: () => context.go(AppRoutes.transactions),
-            ),
-          ],
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.8,
+        children: [
+          _buildQuickActionItem(
+            icon: Icons.arrow_upward,
+            label: 'Enviar',
+            onTap: () => context.go(AppRoutes.sendMoney),
+          ),
+          _buildQuickActionItem(
+            icon: Icons.arrow_downward,
+            label: 'Recibir',
+            onTap: () => context.go(AppRoutes.sendMoney),
+          ),
+          _buildQuickActionItem(
+            icon: Icons.add,
+            label: 'Añadir',
+            onTap: () => context.go(AppRoutes.addCard),
+          ),
+          _buildQuickActionItem(
+            icon: Icons.qr_code_scanner,
+            label: 'Escanear',
+            onTap: () {
+              // TODO: Implement QR scanning
+            },
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildActionCard({
+  Widget _buildQuickActionItem({
     required IconData icon,
-    required String title,
-    required Color color,
+    required String label,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: color.withValues(alpha: 0.3),
-          ),
+          color: const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 32,
-              color: color,
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF00C853),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                icon,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: color,
-                  ),
+              label,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -296,181 +288,270 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildRecentTransactions() {
+  // Recent activity section
+  Widget _buildRecentActivity() {
     return Consumer<TransactionProvider>(
       builder: (context, transactionProvider, child) {
-        final recentTransactions = transactionProvider.recentTransactions;
+        final recentTransactions = transactionProvider.recentTransactions.take(3).toList();
 
         return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Recent Transactions',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            // Header with "Ver todo" link
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Actividad Reciente',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => context.go(AppRoutes.transactions),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                    ),
+                    child: const Text(
+                      'Ver todo',
+                      style: TextStyle(
+                        color: Color(0xFF00C853),
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
-                ),
-                TextButton(
-                  onPressed: () => context.go(AppRoutes.transactions),
-                  child: const Text('See all'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            if (recentTransactions.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.receipt_long_outlined,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No transactions yet',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Start sending money to see your transactions here',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              )
-            else
-              Column(
-                children: recentTransactions.take(3).map((transaction) {
-                  return _buildTransactionItem(transaction);
-                }).toList(),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(height: 8),
+
+            // Transaction items
+            ...recentTransactions.map((transaction) => _buildActivityItem(transaction)),
           ],
         );
       },
     );
   }
 
-  Widget _buildTransactionItem(dynamic transaction) {
+  Widget _buildActivityItem(Transaction transaction) {
     final isSent = transaction.type == TransactionType.send;
+    final categoryIcon = _getTransactionIcon(transaction);
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
-        ),
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
+          // Transaction icon
           Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
-              color: (isSent ? Colors.red : Colors.green).withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
+              color: const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
             ),
-            child: Icon(
-              isSent ? Icons.arrow_upward : Icons.arrow_downward,
-              color: isSent ? Colors.red : Colors.green,
-            ),
+            child: categoryIcon is IconData
+                ? Icon(
+                    categoryIcon,
+                    color: const Color(0xFF00C853),
+                    size: 30,
+                  )
+                : Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: categoryIcon['color'],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      categoryIcon['icon'],
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
+
+          // Transaction details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   transaction.recipientName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  _formatDate(transaction.createdAt),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                      ),
+                  _formatActivityDate(transaction.createdAt),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 14,
+                    fontWeight: FontWeight.normal,
+                  ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                isSent ? '-\$${transaction.amount.toStringAsFixed(2)}' : '+\$${transaction.amount.toStringAsFixed(2)}',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: isSent ? Colors.red : Colors.green,
-                    ),
-              ),
-              Text(
-                _getStatusText(transaction.status),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _getStatusColor(transaction.status),
-                    ),
-              ),
-            ],
+
+          // Amount
+          Text(
+            '${isSent ? '-' : '+'}\$${transaction.amount.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: isSent ? const Color(0xFFEF4444) : const Color(0xFF00C853),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
+  // Bottom navigation bar
+  Widget _buildBottomNavigationBar() {
+    return Container(
+      height: 80,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFFE2E8F0),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildNavItem(
+            icon: Icons.home,
+            label: 'Inicio',
+            isSelected: true,
+            onTap: () {}, // Already on home
+          ),
+          _buildNavItem(
+            icon: Icons.credit_card,
+            label: 'Tarjetas',
+            isSelected: false,
+            onTap: () => context.go(AppRoutes.cards),
+          ),
+          _buildNavItem(
+            icon: Icons.receipt_long,
+            label: 'Actividad',
+            isSelected: false,
+            onTap: () => context.go(AppRoutes.transactions),
+          ),
+          _buildNavItem(
+            icon: Icons.person,
+            label: 'Perfil',
+            isSelected: false,
+            onTap: () => context.go(AppRoutes.profile),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNavItem({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: isSelected ? const Color(0xFF00C853) : const Color(0xFF64748B),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? const Color(0xFF00C853) : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper methods
+  String _getInitials(String fullName) {
+    final parts = fullName.trim().split(' ');
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    } else if (parts.isNotEmpty) {
+      return parts[0][0].toUpperCase();
+    } else {
+      return '?';
+    }
+  }
+
+  String _getFirstName(String fullName) {
+    final parts = fullName.trim().split(' ');
+    return parts.isNotEmpty ? parts[0] : fullName;
+  }
+
+  String _formatActivityDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      return 'Today';
+      return 'Hoy';
     } else if (difference.inDays == 1) {
-      return 'Yesterday';
+      return 'Ayer';
     } else if (difference.inDays < 7) {
       return '${difference.inDays} days ago';
     } else {
-      return '${date.day}/${date.month}/${date.year}';
+      return '${date.day} ${_getMonthName(date.month)} ${date.year}';
     }
   }
 
-  String _getStatusText(TransactionStatus status) {
-    switch (status) {
-      case TransactionStatus.completed:
-        return 'Completed';
-      case TransactionStatus.pending:
-        return 'Pending';
-      case TransactionStatus.failed:
-        return 'Failed';
-      case TransactionStatus.cancelled:
-        return 'Cancelled';
-    }
+  String _getMonthName(int month) {
+    const months = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'
+    ];
+    return months[month - 1];
   }
 
-  Color _getStatusColor(TransactionStatus status) {
-    switch (status) {
-      case TransactionStatus.completed:
-        return Colors.green;
-      case TransactionStatus.pending:
-        return Colors.orange;
-      case TransactionStatus.failed:
-      case TransactionStatus.cancelled:
-        return Colors.red;
+  dynamic _getTransactionIcon(Transaction transaction) {
+    final recipient = transaction.recipientEmail.toLowerCase();
+
+    if (transaction.type == TransactionType.receive) {
+      return Icons.account_balance_wallet;
+    }
+
+    if (recipient.contains('spotify') || recipient.contains('music')) {
+      return {'icon': Icons.music_note, 'color': const Color(0xFF1DB954)};
+    } else if (recipient.contains('uber') || recipient.contains('taxi')) {
+      return {'icon': Icons.local_taxi, 'color': const Color(0xFFFF0000)};
+    } else if (recipient.contains('amazon') || recipient.contains('shop')) {
+      return {'icon': Icons.shopping_bag, 'color': const Color(0xFFFF9900)};
+    } else if (recipient.contains('restaurant') || recipient.contains('food')) {
+      return {'icon': Icons.restaurant, 'color': const Color(0xFFE91E63)};
+    } else {
+      return Icons.arrow_upward;
     }
   }
 }
