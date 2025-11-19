@@ -43,3 +43,28 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Claude AI related files and directories
+.claude/
+.claude.json
+.claude.json.backup
+.claude.json.corrupted.*
+
+# Claude AI configuration and cache
+.anthropic/
+.claude-code/
+specify/
+
+# Claude AI session files and memory
+.constitution.md
+.memory/
+
+# Any files containing Claude references or AI-generated content
+*claude*
+*claude-*
+*_claude*
+*generated_by_claude*
+*claude_generated*
+
+# IDE Claude Code extensions
+.vscode/extensions/claude-code*
